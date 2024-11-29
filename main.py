@@ -146,16 +146,32 @@ def play_game(level_config):
 
         # Get keys for movement
         keys = pygame.key.get_pressed()
-        if keys[K_LEFT]:
+        if keys[K_LEFT] and keys[K_UP]:
+            player_pos[0] -= player_speed
+            player_pos[1] -= player_speed
+            pacman = pygame.transform.rotate(pacman_img, 135)
+        elif keys[K_LEFT] and keys[K_DOWN]:
+            player_pos[0] -= player_speed
+            player_pos[1] += player_speed
+            pacman = pygame.transform.rotate(pacman_img, 225)
+        elif keys[K_RIGHT] and keys[K_UP]:
+            player_pos[0] += player_speed
+            player_pos[1] -= player_speed
+            pacman = pygame.transform.rotate(pacman_img, 45)
+        elif keys[K_RIGHT] and keys[K_DOWN]:
+            player_pos[0] += player_speed
+            player_pos[1] += player_speed
+            pacman = pygame.transform.rotate(pacman_img, 315)
+        elif keys[K_LEFT]:
             player_pos[0] -= player_speed
             pacman = pygame.transform.rotate(pacman_img, 180)
-        if keys[K_RIGHT]:
+        elif keys[K_RIGHT]:
             player_pos[0] += player_speed
             pacman = pygame.transform.rotate(pacman_img, 0)
-        if keys[K_UP]:
+        elif keys[K_UP]:
             player_pos[1] -= player_speed
             pacman = pygame.transform.rotate(pacman_img, 90)
-        if keys[K_DOWN]:
+        elif keys[K_DOWN]:
             player_pos[1] += player_speed
             pacman = pygame.transform.rotate(pacman_img, 270)
 
