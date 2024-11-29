@@ -93,25 +93,37 @@ def show_game_over(hearts):
                     return True
         pygame.time.wait(100)
 
+# Function to play the game
 def play_game(level_config):
     player_pos = [WIDTH // 2, HEIGHT // 2]
     player_speed = 5
     pacman_img = pygame.image.load("sprites/pacman.png")
-    pacman_img = pygame.transform.scale(pacman_img, (50, 50))
+    pacman_img = pygame.transform.scale(pacman_img, (70, 40))
     pacman = pacman_img
     hearts = 5
     start_time = pygame.time.get_ticks()
     game_duration = level_config["time"]
 
-    # Mushrooms
-    red_mushroom_img = pygame.image.load("sprites/red-mushroom.png")
-    pink_mushroom_img = pygame.image.load("sprites/pink-mushroom.png")
-    blue_mushroom_img = pygame.image.load("sprites/blue-mushroom.png")
-    mushrooms = [
-        {"image": pygame.transform.scale(red_mushroom_img, (30, 30)), "type": "red", "pos": [random.randint(0, WIDTH - 30), random.randint(0, HEIGHT - 30)], "speed": [level_config["speed"], level_config["speed"]]},
-        {"image": pygame.transform.scale(pink_mushroom_img, (30, 30)), "type": "pink", "pos": [random.randint(0, WIDTH - 30), random.randint(0, HEIGHT - 30)], "speed": [0, 0]},
-        {"image": pygame.transform.scale(blue_mushroom_img, (30, 30)), "type": "blue", "pos": [random.randint(0, WIDTH - 30), random.randint(0, HEIGHT - 30)], "speed": [0, 0]},
-    ]
+    # Load mushroom images
+    mushroom_images = {
+        "yellow": [pygame.image.load(f"sprites/yellow-{i}-mushroom.png") for i in range(1, 3)],
+        "pink": [pygame.image.load(f"sprites/pink-{i}-mushroom.png") for i in range(1, 3)],
+        "green": [pygame.image.load(f"sprites/green-{i}-mushroom.png") for i in range(1, 3)],
+        "blue": [pygame.image.load(f"sprites/blue-{i}-mushroom.png") for i in range(1, 3)],
+        "red": [pygame.image.load(f"sprites/red-{i}-mushroom.png") for i in range(1, 4)],
+    }
+
+    # Initialize mushrooms
+    mushrooms = []
+    for color, images in mushroom_images.items():
+        for img in images:
+            mushrooms.append({
+                "image": pygame.transform.scale(img, (30, 30)),
+                "type": color,
+                "pos": [random.randint(0, WIDTH - 30), random.randint(0, HEIGHT - 30)],
+                "speed": level_config["speed"] if color == "red" else 0,
+                "follow": False
+            })
 
     # Clock for controlling frame rate
     clock = pygame.time.Clock()
@@ -162,28 +174,54 @@ def play_game(level_config):
             # Draw mushroom
             screen.blit(mushroom["image"], mushroom["pos"])
 
-            # Move red mushroom
+            # Move red mushrooms towards Pacman
             if mushroom["type"] == "red":
-                mushroom["pos"][0] += mushroom["speed"][0]
-                mushroom["pos"][1] += mushroom["speed"][1]
+                direction = [player_pos[0] - mushroom["pos"][0], player_pos[1] - mushroom["pos"][1]]
+                distance = (direction[0]**2 + direction[1]**2) ** 0.5
+                if distance != 0:
+                    direction = [direction[0] / distance, direction[1] / distance]
+                mushroom["pos"][0] += direction[0] * mushroom["speed"]
+                mushroom["pos"][1] += direction[1] * mushroom["speed"]
 
-                # Bounce on borders
-                if mushroom["pos"][0] <= 0 or mushroom["pos"][0] >= WIDTH - 30:
-                    mushroom["speed"][0] = -mushroom["speed"][0]
-                if mushroom["pos"][1] <= 0 or mushroom["pos"][1] >= HEIGHT - 30:
-                    mushroom["speed"][1] = -mushroom["speed"][1]
+            # Move yellow mushrooms towards Pacman if they are following
+            if mushroom["follow"]:
+                direction = [player_pos[0] - mushroom["pos"][0], player_pos[1] - mushroom["pos"][1]]
+                distance = (direction[0]**2 + direction[1]**2) ** 0.5
+                if distance != 0:
+                    direction = [direction[0] / distance, direction[1] / distance]
+                mushroom["pos"][0] += direction[0] * player_speed
+                mushroom["pos"][1] += direction[1] * player_speed
 
-            # Check collision
+            # Check collision with Pacman
             if pacman_rect.colliderect(mushroom_rect):
                 if mushroom["type"] == "red":
                     hearts -= 1
                 elif mushroom["type"] == "pink":
                     hearts -= 0.5
                 elif mushroom["type"] == "blue":
+                    hearts += 0.5
+                elif mushroom["type"] == "green":
                     hearts += 1
+                elif mushroom["type"] == "yellow":
+                    mushroom["follow"] = True
 
-                # Relocate mushroom after collision
-                mushroom["pos"] = [random.randint(0, WIDTH - 30), random.randint(0, HEIGHT - 30)]
+                # Relocate mushroom after collision if not yellow
+                if mushroom["type"] != "yellow":
+                    mushroom["pos"] = [random.randint(0, WIDTH - 30), random.randint(0, HEIGHT - 30)]
+
+            # Check collision with yellow mushrooms
+            if mushroom["follow"]:
+                for other_mushroom in mushrooms:
+                    if other_mushroom["type"] in ["blue", "green"] and pygame.Rect(*other_mushroom["pos"], 30, 30).colliderect(mushroom_rect):
+                        if other_mushroom["type"] == "blue":
+                            hearts += 0.5
+                        elif other_mushroom["type"] == "green":
+                            hearts += 1
+                        other_mushroom["pos"] = [random.randint(0, WIDTH - 30), random.randint(0, HEIGHT - 30)]
+                    elif other_mushroom["type"] == "red" and pygame.Rect(*other_mushroom["pos"], 30, 30).colliderect(mushroom_rect):
+                        hearts -= 0.5
+                        mushrooms.remove(mushroom)
+                        break
 
         # Draw hearts
         for i in range(int(hearts)):
